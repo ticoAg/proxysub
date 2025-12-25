@@ -31,7 +31,7 @@ uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 - `GET /`：上传页面（说明文档来自 `docs/index.md`，Markdown 渲染）
 - `POST /upload`：上传 YAML，生成一次性短链
-- `GET /{token}.yaml`：一次性下载链接（下载 1 次即失效；默认 60 分钟过期清理）
+- `GET /{token}.yaml`：一次性下载链接（下载 1 次即失效；默认 3 分钟过期清理）
 
 ---
 

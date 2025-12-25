@@ -32,4 +32,4 @@ west-cowboy:
 - 模板里所有带 `use` 的 proxy-group，会把它的 `use` 同步为所有订阅名（如 `[订阅1, 订阅2]`）。
 - 自动确保存在 `proxy-groups.西部牛仔`（`url-test`），并将所有订阅节点纳入其中用于 dialer 选择。
 - `西部牛仔.url` 默认使用 `http://<US-Home.server>:<US-Home.port>/`，并设置 `expected-status: 407`；可用 `west-cowboy` 覆盖。
-- 上传后生成一次性下载短链 `/{token}.yaml`：有效期 60 分钟；下载一次后即失效并删除临时文件。
+- 上传后生成一次性下载短链 `/{token}.yaml`：有效期 3 分钟；下载一次后即失效并删除临时文件。

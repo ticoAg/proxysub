@@ -18,7 +18,7 @@ DEFAULT_TEMPLATE_PATH = APP_ROOT / "templates" / "ryan.yaml"
 DEFAULT_TEMP_DIR = APP_ROOT / "temp"
 DEFAULT_DOCS_MD_PATH = APP_ROOT / "docs" / "index.md"
 _OUTPUT_TOKEN_ALPHABET = string.ascii_letters + string.digits
-_ONE_TIME_DOWNLOAD_TTL_S = 3600
+_ONE_TIME_DOWNLOAD_TTL_S = 180
 
 app = FastAPI(title="proxysub", version="0.1.0")
 
