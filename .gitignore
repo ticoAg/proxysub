@@ -1,0 +1,4 @@
+.venv/
+subs.yaml
+temp/
+__pycache__/
