@@ -11,11 +11,10 @@ import yaml
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 
-from proxysub.builder import build_and_write_yaml, build_and_write_yaml_from_doc
+from proxysub.builder import build_and_write_yaml_from_doc
 
 APP_ROOT = Path(__file__).resolve().parent
 DEFAULT_TEMPLATE_PATH = APP_ROOT / "templates" / "ryan.yaml"
-DEFAULT_SUBS_PATH = APP_ROOT / "subs.yaml"
 DEFAULT_TEMP_DIR = APP_ROOT / "temp"
 DEFAULT_DOCS_MD_PATH = APP_ROOT / "docs" / "index.md"
 _OUTPUT_TOKEN_ALPHABET = string.ascii_letters + string.digits
@@ -121,25 +120,6 @@ def index() -> HTMLResponse:
     return HTMLResponse(_html_page(body=body))
 
 
-@app.get("/sub.yaml")
-def download_subscription() -> FileResponse:
-    try:
-        output_path = _build_unique_output_path(DEFAULT_TEMP_DIR)
-        result = build_and_write_yaml(
-            template_path=DEFAULT_TEMPLATE_PATH,
-            subs_path=DEFAULT_SUBS_PATH,
-            output_path=output_path,
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return FileResponse(
-        path=result.output_path,
-        media_type="application/x-yaml",
-        filename=result.output_path.name,
-    )
-
-
 @app.post("/upload", response_class=HTMLResponse)
 async def upload_subscription(request: Request, file: UploadFile = File(...)) -> HTMLResponse:
     raw = await file.read()
@@ -189,15 +169,6 @@ def download_one_time_yaml(token: str, background_tasks: BackgroundTasks) -> Fil
         filename=item.path.name,
         background=background_tasks,
     )
-
-
-def _build_unique_output_path(temp_dir: Path, *, suffix: str = ".yaml") -> Path:
-    for _ in range(12):
-        token = _generate_short_token()
-        candidate = temp_dir / f"{token}{suffix}"
-        if not candidate.exists():
-            return candidate
-    raise RuntimeError("failed to generate unique output path")
 
 
 if __name__ == "__main__":

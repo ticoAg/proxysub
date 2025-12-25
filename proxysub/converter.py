@@ -121,6 +121,8 @@ def apply_profile_script(
         if not isinstance(group_proxies, list):
             continue
         group["proxies"] = _uniq_strings([p for p in group_proxies if isinstance(p, str)])
+        if group.get("include-all-proxies") is True:
+            continue
         if us_home_proxy_name not in group["proxies"]:
             group["proxies"].append(us_home_proxy_name)
 
