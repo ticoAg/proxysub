@@ -11,7 +11,8 @@ from proxysub.yamlio import load_yaml_file
 
 @dataclass(frozen=True)
 class SubsConfig:
-    subs: list[str]
+    proxy_provider_urls: list[str]
+    proxy_providers: dict[str, dict[str, Any]]
     proxies: list[dict[str, Any]]
 
     @property
@@ -25,18 +26,46 @@ class SubsConfig:
 
 def load_subs_config(path: Any) -> SubsConfig:
     doc = load_yaml_file(path)
+    return parse_subs_config(doc)
+
+
+def parse_subs_config(doc: Any) -> SubsConfig:
     if doc is None:
         doc = {}
     if not isinstance(doc, dict):
         raise ValueError(f"subs.yaml must be a YAML mapping, got {type(doc).__name__}")
 
-    raw_subs = doc.get("subs") or []
-    subs = [s.strip() for s in raw_subs if isinstance(s, str) and s.strip()]
+    raw_proxy_providers = doc.get("proxy-providers")
+    # Backwards-compatibility with the legacy `subs` field (list of urls).
+    if raw_proxy_providers is None:
+        raw_proxy_providers = doc.get("subs")
+
+    proxy_provider_urls: list[str] = []
+    proxy_providers: dict[str, dict[str, Any]] = {}
+    if isinstance(raw_proxy_providers, list):
+        proxy_provider_urls = [
+            s.strip() for s in raw_proxy_providers if isinstance(s, str) and s.strip()
+        ]
+    elif isinstance(raw_proxy_providers, dict):
+        for raw_name, raw_provider in raw_proxy_providers.items():
+            if not isinstance(raw_name, str):
+                continue
+            name = raw_name.strip()
+            if not name:
+                continue
+            if isinstance(raw_provider, dict):
+                proxy_providers[name] = raw_provider
+            elif isinstance(raw_provider, str):
+                proxy_providers[name] = {"url": raw_provider.strip()}
 
     raw_proxies = doc.get("proxies") or []
     proxies = [p for p in raw_proxies if isinstance(p, dict)]
 
-    return SubsConfig(subs=subs, proxies=proxies)
+    return SubsConfig(
+        proxy_provider_urls=proxy_provider_urls,
+        proxy_providers=proxy_providers,
+        proxies=proxies,
+    )
 
 
 def fetch_subscription_proxies(urls: list[str], *, timeout_s: int = 25) -> list[dict[str, Any]]:
