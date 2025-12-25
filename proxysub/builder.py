@@ -80,7 +80,12 @@ def _apply_subs_config(template_doc: dict[str, Any], subs_config: SubsConfig) ->
     template_doc["proxy-providers"] = proxy_providers
     _sync_group_use_fields(template_doc.get("proxy-groups"), provider_names)
 
-    apply_profile_script(template_doc, us_home_proxy_name=subs_config.us_home_proxy_name)
+    apply_profile_script(
+        template_doc,
+        us_home_proxy_name=subs_config.us_home_proxy_name,
+        west_cowboy_url_override=subs_config.west_cowboy_url,
+        west_cowboy_expected_status_override=subs_config.west_cowboy_expected_status,
+    )
     _flowify_proxy_group_lists(template_doc.get("proxy-groups"))
 
 

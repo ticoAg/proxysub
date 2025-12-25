@@ -14,6 +14,8 @@ class SubsConfig:
     proxy_provider_urls: list[str]
     proxy_providers: dict[str, dict[str, Any]]
     proxies: list[dict[str, Any]]
+    west_cowboy_url: str | None = None
+    west_cowboy_expected_status: str | int | None = None
 
     @property
     def us_home_proxy_name(self) -> str:
@@ -61,10 +63,34 @@ def parse_subs_config(doc: Any) -> SubsConfig:
     raw_proxies = doc.get("proxies") or []
     proxies = [p for p in raw_proxies if isinstance(p, dict)]
 
+    west_cowboy = doc.get("west-cowboy")
+    if west_cowboy is None:
+        west_cowboy = doc.get("west_cowboy")
+
+    west_cowboy_url: str | None = None
+    west_cowboy_expected_status: str | int | None = None
+    if isinstance(west_cowboy, dict):
+        raw_url = west_cowboy.get("url")
+        if raw_url is None:
+            raw_url = west_cowboy.get("test-url")
+        if raw_url is None:
+            raw_url = west_cowboy.get("test_url")
+
+        if isinstance(raw_url, str) and raw_url.strip():
+            west_cowboy_url = raw_url.strip()
+
+        raw_expected_status = west_cowboy.get("expected-status")
+        if raw_expected_status is None:
+            raw_expected_status = west_cowboy.get("expected_status")
+        if isinstance(raw_expected_status, (str, int)) and str(raw_expected_status).strip():
+            west_cowboy_expected_status = raw_expected_status
+
     return SubsConfig(
         proxy_provider_urls=proxy_provider_urls,
         proxy_providers=proxy_providers,
         proxies=proxies,
+        west_cowboy_url=west_cowboy_url,
+        west_cowboy_expected_status=west_cowboy_expected_status,
     )
 
 

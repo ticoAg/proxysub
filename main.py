@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+import markdown as markdown_lib
 import yaml
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
@@ -16,6 +17,7 @@ APP_ROOT = Path(__file__).resolve().parent
 DEFAULT_TEMPLATE_PATH = APP_ROOT / "templates" / "ryan.yaml"
 DEFAULT_SUBS_PATH = APP_ROOT / "subs.yaml"
 DEFAULT_TEMP_DIR = APP_ROOT / "temp"
+DEFAULT_DOCS_MD_PATH = APP_ROOT / "docs" / "index.md"
 _OUTPUT_TOKEN_ALPHABET = string.ascii_letters + string.digits
 _ONE_TIME_DOWNLOAD_TTL_S = 3600
 
@@ -42,9 +44,7 @@ def _cleanup_one_time_downloads(*, now: float | None = None) -> None:
         now = time.time()
 
     stale_tokens = [
-        token
-        for token, item in _ONE_TIME_DOWNLOADS.items()
-        if now - item.created_at > _ONE_TIME_DOWNLOAD_TTL_S
+        token for token, item in _ONE_TIME_DOWNLOADS.items() if now - item.created_at > _ONE_TIME_DOWNLOAD_TTL_S
     ]
     for token in stale_tokens:
         item = _ONE_TIME_DOWNLOADS.pop(token, None)
@@ -73,36 +73,51 @@ def _html_page(*, body: str, title: str = "proxysub") -> str:
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{title}</title>
-  <style>
-    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; margin: 2rem; }}
-    .card {{ max-width: 860px; padding: 1.25rem 1.5rem; border: 1px solid #e5e7eb; border-radius: 12px; }}
-    code {{ background: #f3f4f6; padding: 0.12rem 0.35rem; border-radius: 6px; }}
-    input[type="file"] {{ margin: 0.75rem 0; }}
-    button {{ padding: 0.55rem 0.9rem; border-radius: 10px; border: 1px solid #d1d5db; background: #111827; color: white; cursor: pointer; }}
-    button:hover {{ opacity: 0.92; }}
-    a {{ color: #2563eb; }}
-    .muted {{ color: #6b7280; }}
-  </style>
+	  <style>
+	    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; margin: 2rem; }}
+	    .card {{ max-width: 860px; padding: 1.25rem 1.5rem; border: 1px solid #e5e7eb; border-radius: 12px; }}
+	    code {{ background: #f3f4f6; padding: 0.12rem 0.35rem; border-radius: 6px; }}
+	    pre {{ background: #f3f4f6; padding: 0.9rem 1rem; border-radius: 12px; overflow-x: auto; }}
+	    pre code {{ background: transparent; padding: 0; }}
+	    input[type="file"] {{ margin: 0.75rem 0; }}
+	    button {{ padding: 0.55rem 0.9rem; border-radius: 10px; border: 1px solid #d1d5db; background: #111827; color: white; cursor: pointer; }}
+	    button:hover {{ opacity: 0.92; }}
+	    a {{ color: #2563eb; }}
+	    .muted {{ color: #6b7280; }}
+	  </style>
 </head>
 <body>
   <div class="card">
   {body}
   </div>
 </body>
-</html>"""
+	</html>"""
+
+
+def _render_markdown(md_text: str) -> str:
+    return markdown_lib.markdown(md_text, extensions=["fenced_code", "tables"], output_format="html5")
+
+
+def _load_docs_markdown(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return "（文档文件缺失）"
 
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> HTMLResponse:
-    body = """
-<h2>proxysub</h2>
-<p class="muted">上传配置 YAML（仅需要包含 <code>proxies</code> 与 <code>proxy-providers</code>），生成一次性短链下载。</p>
-
-<form action="/upload" method="post" enctype="multipart/form-data">
-  <div><input type="file" name="file" accept=".yaml,.yml,application/x-yaml,text/yaml" required></div>
-  <button type="submit">生成订阅</button>
-</form>
-"""
+    docs_html = _render_markdown(_load_docs_markdown(DEFAULT_DOCS_MD_PATH))
+    body = (
+        "<h2>proxysub</h2>"
+        "<p class=\"muted\">上传配置 YAML（仅需要包含 <code>proxies</code> 与 <code>proxy-providers</code>），生成一次性短链下载。</p>"
+        "<form action=\"/upload\" method=\"post\" enctype=\"multipart/form-data\">"
+        "<div><input type=\"file\" name=\"file\" accept=\".yaml,.yml,application/x-yaml,text/yaml\" required></div>"
+        "<button type=\"submit\">生成订阅</button>"
+        "</form>"
+        "<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:1.25rem 0;\" />"
+        f"<div class=\"md\">{docs_html}</div>"
+    )
     return HTMLResponse(_html_page(body=body))
 
 
