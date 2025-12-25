@@ -6,3 +6,4 @@ vercel/.next/
 vercel/.vercel/
 vercel/node_modules/
 vercel/public/templates/ryan.yaml
+vercel/.env

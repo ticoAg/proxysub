@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+import os
 import secrets
 import string
 import time
@@ -19,6 +21,8 @@ DEFAULT_TEMP_DIR = APP_ROOT / "temp"
 DEFAULT_DOCS_MD_PATH = APP_ROOT / "docs" / "index.md"
 _OUTPUT_TOKEN_ALPHABET = string.ascii_letters + string.digits
 _ONE_TIME_DOWNLOAD_TTL_S = 180
+TEMPLATE_SOURCE_URL = "https://linux.do/t/topic/1282245"
+PROJECT_GITHUB_URL = "https://github.com/ticoAg/proxysub"
 
 app = FastAPI(title="proxysub", version="0.1.0")
 
@@ -104,8 +108,67 @@ def _load_docs_markdown(path: Path) -> str:
         return "（文档文件缺失）"
 
 
+def _read_git_head_sha() -> str | None:
+    git_dir = APP_ROOT / ".git"
+    head_path = git_dir / "HEAD"
+    try:
+        head = head_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+
+    if head.startswith("ref:"):
+        ref = head.split(":", 1)[1].strip()
+        ref_path = git_dir / ref
+        try:
+            sha = ref_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return None
+        return sha or None
+
+    return head or None
+
+
+def _get_deploy_commit() -> str:
+    for key in (
+        "VERCEL_GIT_COMMIT_SHA",
+        "GITHUB_SHA",
+        "COMMIT_SHA",
+        "DEPLOY_COMMIT_SHA",
+        "SOURCE_VERSION",
+    ):
+        value = os.getenv(key)
+        if value and value.strip():
+            return value.strip()
+    return _read_git_head_sha() or "unknown"
+
+
+@app.get("/templates/ryan.yaml")
+def download_template() -> FileResponse:
+    if not DEFAULT_TEMPLATE_PATH.exists():
+        raise HTTPException(status_code=404, detail="Template not found")
+    return FileResponse(
+        path=DEFAULT_TEMPLATE_PATH,
+        media_type="application/x-yaml",
+        filename="ryan.yaml",
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 def index() -> HTMLResponse:
+    commit = _get_deploy_commit()
+    commit_short = commit[:7] if commit != "unknown" else commit
+
+    template_href = "/templates/ryan.yaml"
+    template_link = f'<a href="{template_href}" download>templates/ryan.yaml</a>'
+    template_source_link = (
+        f'<a href="{html.escape(TEMPLATE_SOURCE_URL)}" target="_blank" rel="noreferrer">'
+        f"{html.escape(TEMPLATE_SOURCE_URL)}</a>"
+    )
+    github_link = (
+        f'<a href="{html.escape(PROJECT_GITHUB_URL)}" target="_blank" rel="noreferrer">'
+        f"{html.escape(PROJECT_GITHUB_URL)}</a>"
+    )
+
     docs_html = _render_markdown(_load_docs_markdown(DEFAULT_DOCS_MD_PATH))
     body = (
         "<h2>proxysub</h2>"
@@ -114,6 +177,9 @@ def index() -> HTMLResponse:
         "<div><input type=\"file\" name=\"file\" accept=\".yaml,.yml,application/x-yaml,text/yaml\" required></div>"
         "<button type=\"submit\">生成订阅</button>"
         "</form>"
+        f"<p class=\"muted\">模板下载：{template_link}（最终配置基于此模板生成；来源：{template_source_link}）</p>"
+        f"<p class=\"muted\">项目地址：{github_link}；部署版本：<code title=\"{html.escape(commit)}\">{html.escape(commit_short)}</code></p>"
+        "<p class=\"muted\">免责声明：本项目仅供学习与交流使用；请遵守当地法律法规；因使用本项目/配置导致的任何后果由使用者自行承担。</p>"
         "<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:1.25rem 0;\" />"
         f"<div class=\"md\">{docs_html}</div>"
     )
