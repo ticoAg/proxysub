@@ -2,3 +2,7 @@
 subs.yaml
 temp/
 __pycache__/
+vercel/.next/
+vercel/.vercel/
+vercel/node_modules/
+vercel/public/templates/ryan.yaml

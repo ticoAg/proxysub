@@ -136,3 +136,30 @@ west-cowboy:
 
 - 一次性短链存储在内存里：服务重启会丢失；不适合多进程/多副本部署（除非你自己改成外部存储）。
 - 生成文件会写入 `temp/` 目录并在“一次性下载”后删除；未下载的文件会在过期清理时删除。
+
+---
+
+## Vercel Edge 部署（可选）
+
+本仓库保留现有 Python/FastAPI 版本不变；同时提供一个可部署到 Vercel 的 Edge 版本（静态首页 + Edge Route Handler 转换）。
+
+### 目录
+
+- `vercel/`：Next.js 项目（作为 Vercel Root Directory）
+
+### 环境变量
+
+Edge 版本使用 Upstash Redis（REST）保存一次性下载内容：
+
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+
+可选：
+
+- `ONE_TIME_DOWNLOAD_TTL_S`：一次性链接 TTL（秒），默认 `180`（3 分钟）
+- `PUBLIC_BASE_URL`：强制生成下载链接使用的外部域名（默认使用请求的 `origin`）
+
+### 部署要点
+
+- 在 Vercel 项目设置中将 **Root Directory** 设为 `vercel/`
+- Build Command：`npm run build`（已包含 `sync-assets`，会把根目录 `templates/ryan.yaml` 同步到 `vercel/public/templates/ryan.yaml`）
